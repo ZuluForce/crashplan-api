@@ -33,16 +33,18 @@ class ResourceRegistry(object):
         self.resource_versions = defaultdict(dict)
 
 
+    # TODO: Remove requirement for versions parameter. You should be able to get
+    # it off the versioncls
     def add_version(self, resource, versionCls, versions):
         """
         Add a resource version satisfying the given version range.
-        
+
         Raises:
             OverlappingResourceVersionException - When the given version range conflicts with
                 an already registered one.
         """
         version_map = self.resource_versions[resource]
-        
+
         conflicts = self.get_verison_by_range(resource, versions)
         if conflicts is not None and len(conflicts) > 0:
             raise OverlappingResourceVersionException(resource, conflicts, versions)
@@ -50,22 +52,26 @@ class ResourceRegistry(object):
         version_map[versions] = versionCls
 
 
-    def get_version(self, resource, version):
+    def get_version(self, resource, version, autoLoad=True):
         """
         Get a resource version by providing a single target version.
         """
         version_map = self.resource_versions.get(resource, None)
-        
+
         if version_map is None:
+            if autoLoad:
+                resource.loadAllVersions(self)
+                return self.get_version(resource, version, autoLoad=False)
+
             return None
-        
+
         for vrange, versionCls in version_map.items():
             low = vrange[0]
             high = vrange[1]
             if version >= low and version <= high:
                 return versionCls
 
-    
+
     def get_verison_by_range(self, resource, versions):
         """
         Get one or more resource versions falling into the given range.
@@ -73,7 +79,7 @@ class ResourceRegistry(object):
         version_map = self.resource_versions.get(resource, None)
         if version_map is None:
             return None
-        
+
         version_set = set()
         for vrange, versionCls in version_map.items():
             if self._check_intersection(vrange, versions):
@@ -84,7 +90,7 @@ class ResourceRegistry(object):
     def get_all_versions(self, resource, exclude_ranges=False):
         """
         Get all versions for this resource as a list.
-        
+
         Examples:
         >>> r = ResourceRegistry()
         >>> r.get_all_versions(object())
@@ -102,7 +108,7 @@ class ResourceRegistry(object):
         2
         """
         version_map = self.resource_versions.get(resource, {})
-        
+
         if exclude_ranges:
             return zip(*version_map.items())[-1]
 
@@ -111,7 +117,7 @@ class ResourceRegistry(object):
     def _check_intersection(self, r1, r2):
         """
         Check if the given ranges intersect.
-        
+
         Examples:
         >>> r = ResourceRegistry()
         >>> r._check_intersection((0,2), (0,2))

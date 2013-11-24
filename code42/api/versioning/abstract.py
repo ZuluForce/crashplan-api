@@ -49,9 +49,8 @@ class ImmutableClassMeta(type):
         def block_init(self):
             raise obj_exceptions.NonInstantiableException("Cannot instantiate resource: " + name)
 
-
         dct['__init__'] = block_init
-        inst = type.__new__(cls, name, bases, dct)
+        inst = super(ImmutableClassMeta, cls).__new__(cls, name, bases, dct)
 
         return inst
 
@@ -67,6 +66,16 @@ class ResourceDefinition(object):
     '''
     __metaclass__ = ImmutableClassMeta
 
+    @classmethod
+    def getName(cls):
+        return cls.name
+
+    @classmethod
+    def loadAllVersions(cls, registr):
+        """
+        Load all versions of this resource into the given registry.
+        """
+        raise Exception("loadAllVersions not implemented for {}".format(cls))
 
 class VersionMetaWrapper(ImmutableClassMeta):
     def __new__(cls, name, bases, dct):
@@ -112,7 +121,6 @@ class VersionMetaWrapper(ImmutableClassMeta):
 
         return resource
 
-
 class VersionedResourceDefinition(object):
     '''
     Abstract base class for resource version definitions to
@@ -121,3 +129,18 @@ class VersionedResourceDefinition(object):
     __metaclass__ = VersionMetaWrapper
 
     __abstract__ = True
+
+    @classmethod
+    def getResource(cls):
+        """
+        Get the resource this version definition corresponds to.
+        """
+        return cls.resource
+
+    @classmethod
+    def getMaxVersion(cls):
+        """
+        Get the max api version supported by this definition. The version
+        range will be defined in the implementing class.
+        """
+        return cls.versions[1]
